@@ -50,7 +50,6 @@ ASR_MOUDLE::ASR_MOUDLE(void)
 {
   send[0] = 0;
   send[1] = 0;
-  Wire.begin();
 }
 
 uint8_t ASR_MOUDLE::rec_recognition(void)
