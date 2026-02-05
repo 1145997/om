@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ESP32 Servo Control</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:20px;max-width:520px;margin:auto}
+    .row{margin:14px 0}
+    label{display:block;margin-bottom:6px}
+    input[type=range]{width:100%}
+    .val{font-weight:700;margin-left:8px}
+    .hint{color:#666;font-size:12px;margin-top:10px}
+  </style>
+</head>
+<body>
+  <h2>舵机控制</h2>
+
+  <div class="row">
+    <label>Y: <span class="val" id="vy">90</span></label>
+    <input id="sy" type="range" min="0" max="180" value="90">
+  </div>
+
+  <div class="row">
+    <label>Z: <span class="val" id="vz">90</span></label>
+    <input id="sz" type="range" min="0" max="180" value="90">
+  </div>
+
+  <div class="row">
+    <label>E: <span class="val" id="ve">90</span></label>
+    <input id="se" type="range" min="0" max="180" value="90">
+  </div>
+
+  <div class="hint">拖动滑块会请求：/api/servo?name=Y&value=xx</div>
+
+<script>
+  const bind = (idSlider, idVal, name) => {
+    const s = document.getElementById(idSlider);
+    const v = document.getElementById(idVal);
+
+    const send = (val) => {
+      v.textContent = val;
+      fetch(`/api/servo?name=${name}&value=${val}`).catch(()=>{});
+    };
+
+    s.addEventListener('input', e => send(e.target.value));
+    // 默认上电先发一次（可删）
+    send(s.value);
+  };
+
+  bind('sy','vy','Y');
+  bind('sz','vz','Z');
+  bind('se','ve','E');
+</script>
+</body>
+</html>
