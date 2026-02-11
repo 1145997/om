@@ -19,12 +19,15 @@ extern Servo E;
 extern Servo Y; 
 extern Servo Z; 
 
-const int LED_PIN = 2; // 举例
+const int LED_PIN_1 = 35; // 举例
+const int LED_PIN_2 = 36; // 举例
 
 void setup() {
   Serial.begin(115200);                     // 调试串口
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED_PIN_1, OUTPUT);
+  pinMode(LED_PIN_2, OUTPUT);
   Servo_init();
+  Servo_zero();
   // wifi_init();
   ws2312_init();
   // 初始化语音 UART
@@ -38,24 +41,28 @@ void loop() {
   {
     if(result == 0x01)
     {
-      Servo_active_one();
+      Servo_Shake_R();
       Serial.println("test1");
     }else if(result == 0x02)
     {
       ws2312_test();
+      Servo_zero();
       Serial.println("test2");
     }else if(result == 0x03)
     {
-      digitalWrite(LED_PIN, HIGH);
+      demo();
       Serial.println("test3");
     }else if(result == 0x04)
     {
+      digitalWrite(LED_PIN_1, LOW);
+      digitalWrite(LED_PIN_2, LOW);      
       Serial.println("test4");
     }else if(result == 0x09)
     {
       Serial.println("stop");
     }
   }
+  delay(50);
 }
 
 

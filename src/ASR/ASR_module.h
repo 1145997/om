@@ -11,8 +11,8 @@
 #define ASR_CMDMAND    0x00
 #define ASR_ANNOUNCER  0xFF
 
-#define SDA_PIN 38  // 定义 SDA 引脚
-#define SCL_PIN 39  // 定义 SCL 引脚
+#define SDA_PIN 48  // 定义 SDA 引脚
+#define SCL_PIN 47  // 定义 SCL 引脚
 
 class ASR_MOUDLE
 {
