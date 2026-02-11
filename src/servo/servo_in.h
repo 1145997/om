@@ -15,9 +15,22 @@
 #define E_Angle_Default 90
 
 void Servo_init();
-void Servo_active_one();
-void Servo_zero();
-void Servo_Shake_R();
-void demo();
+// void Servo_active_one();
+// void Servo_zero();
+// void Servo_Shake_R();
+// void demo();
+
+// 播放器维护（必须在 loop 里反复调用）
+void Servo_Update();
+
+// 控制
+void Servo_Stop();
+bool Servo_IsBusy();
+
+// 动作触发（外部只调用这些）
+void Servo_PlayZero();
+void Servo_PlayShakeR();
+void Servo_PlayWave();
+void Servo_PlayDemo();
 
 #endif

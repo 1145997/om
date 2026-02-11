@@ -27,7 +27,6 @@ void setup() {
   pinMode(LED_PIN_1, OUTPUT);
   pinMode(LED_PIN_2, OUTPUT);
   Servo_init();
-  Servo_zero();
   // wifi_init();
   ws2312_init();
   // 初始化语音 UART
@@ -36,33 +35,26 @@ void setup() {
 }
 
 void loop() {
-  result = asr.rec_recognition();  //返回识别结果，即识别到的词条编号
-  if(result != 0)
-  {
-    if(result == 0x01)
-    {
-      Servo_Shake_R();
-      Serial.println("test1");
-    }else if(result == 0x02)
-    {
-      ws2312_test();
-      Servo_zero();
-      Serial.println("test2");
-    }else if(result == 0x03)
-    {
-      demo();
-      Serial.println("test3");
-    }else if(result == 0x04)
-    {
-      digitalWrite(LED_PIN_1, LOW);
-      digitalWrite(LED_PIN_2, LOW);      
-      Serial.println("test4");
-    }else if(result == 0x09)
-    {
-      Serial.println("stop");
+    Servo_Update();  // 必须常驻
+    result = asr.rec_recognition();  //返回识别结果，即识别到的词条编号
+    if(result != 0){
+      if(result == 0x01) {
+        Servo_PlayShakeR();
+        Serial.println("1");
+      }
+      else if(result == 0x02) {
+        Servo_PlayZero();
+        Serial.println("2");
+      }
+      else if(result == 0x03) {
+        Servo_PlayDemo();
+        Serial.println("3");
+      }
+      else if(result == 0x09){
+        Servo_Stop();
+        Serial.println("4");
+      } 
     }
-  }
-  delay(50);
 }
 
 
