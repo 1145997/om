@@ -128,32 +128,6 @@ void Servo_init(){
   Servo_Default();
 }
 
-// void Servo_active_one(){
-//   Y.write(axisSetOffset(Yax, 20 - Yax.D));              // 把绝对角度20转成偏移
-//   Z.write(axisSetOffset(Zax, 20 - Zax.D));
-//   E.write(axisSetOffset(Eax, (E_Angle_Default-45) - Eax.D));
-// }
-
-// void Servo_Shake_R(){
-//   R.write(axisReset(Rax));   // 同步：实际=默认，数学也=0偏移
-//   delay(100);
-
-//   for(int i=0;i<3;i++){
-//     moveToSmooth_Blocking(R,Rax, 70, 10, 1);
-//     delay(150);
-//     moveToSmooth_Blocking(R,Rax, 30, 10, 1);  
-//     delay(150);
-//   }
-
-//   Servo_Default();
-// }
-
-// void demo(){
-//   moveToSmooth_Blocking(R, Rax, 120, 10, 1);
-//   moveToSmooth_Blocking(Y, Yax, 60,  10, 1);
-//   moveToSmooth_Blocking(Z, Zax, 150, 8,  2);
-// }
-
 inline void writeRYZ(){
   R.write(axisAngle(Rax));
   Y.write(axisAngle(Yax));
@@ -161,6 +135,8 @@ inline void writeRYZ(){
 }
 
 
+//*****************动作****************//
+//*****************动作****************//
 //*****************动作****************//
 
 struct Step3 {
@@ -198,7 +174,14 @@ const Step3 act_demo[] = {
   {   0,   0,   0, 600 },
 };
 
+
+
+
 //***********************************//
+//***********************************//
+//***********************************//
+
+
 //*****************播放器************//
 
 float easeInOut(float t){ return t*t*(3.0f - 2.0f*t); }
@@ -224,7 +207,33 @@ int clampOffsetSafe(const AxisState &ax, int o, int minOff, int maxOff){
   return clampi(o, lo, hi);
 }
 
-
+/**
+ * @brief  播放器核心更新函数（非阻塞）
+ *
+ * @return true   当前仍在播放动作
+ * @return false  当前没有播放或已播放完成
+ *
+ * @details
+ * 该函数基于 millis() 推进当前动作序列的时间。
+ * 每次调用会：
+ *   1. 计算当前段的插值进度 u (0~1)
+ *   2. 通过缓动函数 easeInOut(u) 得到平滑比例
+ *   3. 根据起点 + delta 插值计算新的 offset
+ *   4. 写入舵机
+ *   5. 若当前段结束，自动切换到下一段
+ *
+ * 该函数必须在 loop() 中持续调用，否则动作会停止。
+ *
+ * 运动模型：
+ *   offset = start + delta * ease(t)
+ *
+ * 安全机制：
+ *   使用 clampOffsetSafe 限制每轴偏移范围，避免机械顶死。
+ *
+ * 状态机逻辑：
+ *   running == false 时立即返回
+ *   idx >= n 时自动结束播放
+ */
 bool updateSequence(){
   if(!player.running) return false;
 
@@ -274,6 +283,27 @@ bool updateSequence(){
   return true;
 }
 
+
+/**
+ * @brief  启动播放一套动作序列
+ *
+ * @param  seq  指向动作数组（Step3）
+ * @param  n    动作段数量
+ *
+ * @details
+ * 该函数初始化播放器状态：
+ *   - 设置当前动作序列
+ *   - 重置段索引 idx
+ *   - 记录当前 offset 作为起点
+ *   - 计算第一段的 delta
+ *   - 立即输出第一帧（避免启动延迟）
+ *
+ * 若需要抢占旧动作，应在调用前执行 stopSequence()。
+ *
+ * 注意：
+ *   该函数不会做防抖或忙碌判断。
+ *   建议通过 playSequence() 统一入口调用。
+ */
 void beginSequence(const Step3* seq, int n){
   player.running = true;
   player.seq = seq;
@@ -296,42 +326,143 @@ void beginSequence(const Step3* seq, int n){
   updateSequence();
 }
 
-
+/**
+ * @brief  强制停止当前动作播放
+ *
+ * @details
+ * 仅修改播放器状态，不改变舵机当前姿态。
+ * 若希望停止后回到默认姿态，请调用 Servo_PlayZero()。
+ */
 void stopSequence(){
   player.running = false;
 }
 
+/**
+ * @brief  查询当前是否正在播放动作
+ *
+ * @return true   正在播放
+ * @return false  空闲
+ *
+ * @details
+ * 可用于：
+ *   - 防止重复触发
+ *   - 实现非抢占模式
+ *   - 等待当前动作播放完成
+ */
 bool isSequenceRunning(){
   return player.running;
 }
 
-
-// servo_in.cpp 内部
+/**
+ * @brief  内部统一播放入口
+ *
+ * @param  seq        动作数组
+ * @param  n          动作段数量
+ * @param  interrupt  是否抢占当前动作（默认 true）
+ *
+ * @details
+ * 该函数封装 stop + begin 逻辑，
+ * 用于所有对外动作接口的统一入口。
+ *
+ * interrupt == true:
+ *     立即停止当前动作并开始新动作（抢占模式）
+ *
+ * interrupt == false:
+ *     若当前正在播放，则忽略本次触发
+ */
 static void playSequence(const Step3* seq, int n, bool interrupt=true){
   if(interrupt) stopSequence();
   beginSequence(seq, n);
 }
 
+
+/**
+ * @brief  播放器维护函数（必须在 loop() 中持续调用）
+ *
+ * @details
+ * 该函数负责驱动当前动作序列的插值计算与舵机输出。
+ * 内部基于 millis() 进行非阻塞时间推进。
+ *
+ * 若当前没有动作在播放，则函数内部会立即返回。
+ *
+ * @note
+ * 必须在主循环中高频调用，否则动作会停止在当前帧。
+ *
+ * @example
+ * void loop(){
+ *   Servo_Update();
+ * }
+ */
+
 void Servo_Update(){
   updateSequence();
 }
 
+/**
+ * @brief  强制停止当前动作序列
+ *
+ * @details
+ * 立即终止当前播放器状态，不会自动回到默认姿态。
+ * 若需要回中，请在外部调用 Servo_PlayZero() 或其他动作。
+ *
+ * @note
+ * 该函数不会改变当前舵机位置，只是停止插值推进。
+ */
 void Servo_Stop(){
   stopSequence();
 }
 
+/**
+ * @brief  查询播放器是否正在执行动作
+ *
+ * @return true   当前有动作正在播放
+ * @return false  当前处于空闲状态
+ *
+ * @details
+ * 可用于：
+ * - 防止重复触发动作
+ * - 判断是否允许切换新动作
+ * - 实现“非抢占式”控制逻辑
+ */
 bool Servo_IsBusy(){
   return isSequenceRunning();
 }
 
+/**
+ * @brief  动作触发时间防抖变量
+ *
+ * @details
+ * 记录上一次成功触发动作的时间戳（毫秒）。
+ * 用于防止语音识别等连续触发导致动作反复重启。
+ */
 static uint32_t lastTrigMs = 0;
 
+
+/**
+ * @brief  动作触发防抖检测
+ *
+ * @return true   允许触发新动作
+ * @return false  触发间隔过短，被抑制
+ *
+ * @details
+ * 通过 millis() 计算两次触发的时间差。
+ * 若间隔小于 300ms，则认为是重复触发，不执行。
+ *
+ * 适用于语音识别、按键抖动、串口重复数据等场景。
+ *
+ * @note
+ * 如需调整灵敏度，可修改 300ms 阈值。
+ */
 static bool canTrigger(){
   uint32_t now = millis();
   if(now - lastTrigMs < 300) return false; // 300ms 防抖
   lastTrigMs = now;
   return true;
 }
+
+
+//*********************注册动作函数*********************************//
+
 
 
 void Servo_PlayZero(){
@@ -353,9 +484,3 @@ void Servo_PlayDemo(){
   if(!canTrigger()) return;
   playSequence(act_demo, sizeof(act_demo)/sizeof(act_demo[0]));
 }
-
-
-
-
-
-

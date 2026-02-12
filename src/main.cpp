@@ -19,6 +19,8 @@ extern Servo E;
 extern Servo Y; 
 extern Servo Z; 
 
+extern WS2812FX_RMT strip;
+
 const int LED_PIN_1 = 35; // 举例
 const int LED_PIN_2 = 36; // 举例
 
@@ -27,8 +29,8 @@ void setup() {
   pinMode(LED_PIN_1, OUTPUT);
   pinMode(LED_PIN_2, OUTPUT);
   Servo_init();
+  ws2812_init();
   // wifi_init();
-  ws2312_init();
   // 初始化语音 UART
   asr.ASR_init();
   Serial.println("UART In ready");
@@ -36,6 +38,10 @@ void setup() {
 
 void loop() {
     Servo_Update();  // 必须常驻
+
+    strip.tick();
+    strip.show();
+
     result = asr.rec_recognition();  //返回识别结果，即识别到的词条编号
     if(result != 0){
       if(result == 0x01) {
