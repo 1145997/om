@@ -4,7 +4,7 @@
 #include <math.h>
 
 #define NUM_LEDS 240
-#define DATA_PIN 35
+#define DATA_PIN 10
 
 // ---------- Color helpers ----------
 struct RGB {

@@ -56,10 +56,38 @@ void loop() {
         Servo_PlayDemo();
         Serial.println("3");
       }
-      else if(result == 0x09){
-        Servo_Stop();
+      else if(result == 0x04) {
+        Servo_act_test1();
         Serial.println("4");
-      } 
+      }
+      else if(result == 0x05) {
+        Servo_PlayZero();
+        Serial.println("2");
+      }
+      else if(result == 0x06) {
+        Servo_PlayDemo();
+        Serial.println("3");
+      }
+      else if(result == 0x07) {
+        Servo_PlayProudOK();
+        Serial.println("4");
+      }
+      else if(result == 0x08) {
+        Servo_PlayConfused();
+        Serial.println("4");
+      }
+      else if(result == 0x09) {
+        Servo_PlayWaveHi();
+        Serial.println("2");
+      }
+      else if(result == 0x0A) {
+        Servo_PlayScan();
+        Serial.println("3");
+      }
+      else if(result == 0x0B) {
+        Servo_PlayNodAck();
+        Serial.println("4");
+      }
     }
 }
 

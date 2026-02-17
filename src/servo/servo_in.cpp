@@ -5,12 +5,26 @@ Servo E;
 Servo Y; 
 Servo Z; 
 Servo R;
+Servo A;
+Servo B;
+Servo C;
 
 //****************************************//
 struct AxisState {
   int D;   // default / origin
   int o;   // offset from origin
 };
+
+AxisState Aax{A_Angle_Default, 0};
+AxisState Bax{B_Angle_Default, 0};
+AxisState Cax{C_Angle_Default, 0};
+AxisState Rax{R_Angle_Default, 0};
+AxisState Yax{Y_Angle_Default, 0};
+AxisState Zax{Z_Angle_Default, 0};
+AxisState Eax{E_Angle_Default, 0};
+
+
+
 
 int clampi(int v, int lo, int hi){
   if(v < lo) return lo;
@@ -43,10 +57,7 @@ int axisReset(AxisState &ax){
   return axisAngle(ax);
 }
 
-AxisState Rax{R_Angle_Default, 0};
-AxisState Yax{Y_Angle_Default, 0};
-AxisState Zax{Z_Angle_Default, 0};
-AxisState Eax{E_Angle_Default, 0};
+
 
 //****************************************//
 int clampOffset(const AxisState &ax, int o){
@@ -105,18 +116,31 @@ void Servo_Default(){
   E.write(E_Angle_Default);
   Y.write(Y_Angle_Default);
   Z.write(Z_Angle_Default);
+  A.write(A_Angle_Default);
+  B.write(B_Angle_Default);
+  C.write(C_Angle_Default);
+
   axisReset(Rax);
   axisReset(Eax);
   axisReset(Yax);
   axisReset(Zax);
+  axisReset(Aax);
+  axisReset(Bax);
+  axisReset(Cax);
+
   delay(1000);
 }
 
+
+//归零姿态
 void Servo_zero(){
   R.write(axisSetOffset(Rax, -80));
   Y.write(axisSetOffset(Yax, -80));
   Z.write(axisSetOffset(Zax, -80));
   E.write(axisSetOffset(Eax, +80));
+  A.write(axisReset(Aax));
+  B.write(axisReset(Bax));
+  C.write(axisReset(Cax));
 }
 
 void Servo_init(){
@@ -124,6 +148,9 @@ void Servo_init(){
   E.attach(E_Pin);
   Y.attach(Y_Pin);
   Z.attach(Z_Pin);
+  A.attach(A_Pin);
+  B.attach(B_Pin);
+  C.attach(C_Pin);
   delay(50);
   Servo_Default();
 }
@@ -138,6 +165,9 @@ inline void writeRYZ(){
 //*****************动作****************//
 //*****************动作****************//
 //*****************动作****************//
+//{  R,   Y,   Z,  time}
+
+enum { AX_R, AX_Y, AX_Z, AX_E, AX_A, AX_B, AX_C, AX_N };
 
 struct Step3 {
   int rOff;        // R 目标偏移
@@ -146,34 +176,179 @@ struct Step3 {
   uint16_t durMs;  // 这一段用时（毫秒）
 };
 
-const Step3 act_wave[] = {
-  {  0,   0,   0,  300},   // 回到中位（偏移0）
-  {-25,  10,  -5,  600},
-  { 15, -15,  10,  600},
-  {-40,   0,  20,  700},
-  {  0,   0,   0,  500},   // 收回
+struct StepN {
+  int16_t off[AX_N];
+  uint16_t durMs;
 };
 
-const Step3 act_shakeR[] = {
-  {  0, 0, 0, 100},   // 起始回中
-  { 70, 0, 0, 400},   // 到 70
-  { 40, 0, 0, 400},   // 回 30（即 70->40）
-  { 70, 0, 0, 400},
-  { 40, 0, 0, 400},
-  { 70, 0, 0, 400},
-  { 40, 0, 0, 400},
-  {  0, 0, 0, 300},   // 收回
+// static StepN tmpSeq[64]; // 够用就行（按你最大动作段数调）
+// static int   tmpN = 0;
+
+// static const StepN* convert3ToN(const Step3* seq3, int n3){
+//   if(n3 > 64) n3 = 64;
+//   tmpN = n3;
+
+//   for(int i=0;i<n3;i++){
+//     // 全清零
+//     for(int k=0;k<AX_N;k++) tmpSeq[i].off[k] = 0;
+
+//     // 只填 R/Y/Z（顺序必须与你 enum/axes 对齐）
+//     tmpSeq[i].off[AX_R] = seq3[i].rOff;
+//     tmpSeq[i].off[AX_Y] = seq3[i].yOff;
+//     tmpSeq[i].off[AX_Z] = seq3[i].zOff;
+
+//     tmpSeq[i].durMs = seq3[i].durMs;
+//   }
+//   return tmpSeq;
+// }
+
+
+
+// { R,  Y,  Z,  E,  A,  B,  C,  durMs }
+
+
+// wave：R/Y/Z 三轴，约 2.7s
+const StepN act_wave[] = {
+  //        R   Y   Z   E   A   B   C   ms
+  KF(       0,  0,  0,  0,  0,  0,  0, 300), // 回中
+  KF(     -25, 10, -5,  0,  0,  0,  0, 600),
+  KF(      15,-15, 10,  0,  0,  0,  0, 600),
+  KF(     -40,  0, 20,  0,  0,  0,  0, 700),
+  KF(       0,  0,  0,  0,  0,  0,  0, 500), // 收回
 };
 
-const Step3 act_zero[] = {
-  { -80, -80, -80, 600 },
+
+// shakeR：R轴，约 2.4s
+const StepN act_shakeR[] = {
+  KF(  0,0,0,0,0,0,0, 100),
+  KF( 70,0,0,0,0,0,0, 400),
+  KF( 40,0,0,0,0,0,0, 400),
+  KF( 70,0,0,0,0,0,0, 400),
+  KF( 40,0,0,0,0,0,0, 400),
+  KF( 70,0,0,0,0,0,0, 400),
+  KF( 40,0,0,0,0,0,0, 400),
+  KF(  0,0,0,0,0,0,0, 300),
 };
 
-const Step3 act_demo[] = {
-  { 120,  60, 150, 800 },
-  {   0,   0,   0, 600 },
+
+const StepN act_test[] = {
+  KF(   0,   0,   0, 0,0,0,0, 100), // 起始回中
+  KF(  70,   0,   0, 0,0,0,0, 400), // 到 70
+  KF(  40,   0,   0, 0,0,0,0, 400), // 回 30（即 70->40）
+  KF(  70,   0,   0, 0,0,0,0, 400),
+  KF(  40, -15,   0, 0,0,0,0, 400),
+  KF(  70,  60,   0, 0,0,0,0, 400),
+  KF(  40,   0,   0, 0,0,0,0, 400),
+  KF(  29,   0,   0, 0,0,0,0, 300),
+  KF(  20,   0,   0, 0,0,0,0, 300),
+  KF(  50,   0,  60, 0,0,0,0, 300),
+  KF( -60,   0,  50, 0,0,0,0, 300),
+  KF(  20,   0,   0, 0,0,0,0, 300),
 };
 
+
+const StepN zhizhidiandian[] = {
+  // --- 预备 ---
+  KF(   0,  -80,  -80, 0,0,0,0, 200),
+  KF( -15,   65,   15, 0,0,0,0, 500),
+  KF( -10,   55,   25, 0,0,0,0, 500),
+
+  // --- 指点循环 ---
+  KF(  18,   55,   18, 0,0,0,0, 220),
+  KF(  10,   55,   26, 0,0,0,0, 580),
+
+  KF(  18,   55,   18, 0,0,0,0, 220),
+  KF(  10,   55,   26, 0,0,0,0, 580),
+
+  // --- 换方向 ---
+  KF(  28,   45,   25, 0,0,0,0, 600),
+  KF(  22,   45,   30, 0,0,0,0, 600),
+
+  // --- 再点 ---
+  KF(  30,   45,   22, 0,0,0,0, 240),
+  KF(  22,   45,   32, 0,0,0,0, 560),
+
+  KF(  30,   45,   22, 0,0,0,0, 240),
+  KF(  22,   45,   32, 0,0,0,0, 560),
+
+  // --- 收回 ---
+  KF(   0,   30,   40, 0,0,0,0, 400),
+  KF(   0,  -80,  -80, 0,0,0,0, 200),
+};
+
+
+const StepN act_nod_ack[] = {
+  KF(  0, 40, 60, 0,0,0,0, 300),
+  KF(  5, 55, 50, 0,0,0,0, 250),
+  KF(  0, 40, 60, 0,0,0,0, 350),
+  KF( -5, 55, 50, 0,0,0,0, 250),
+  KF(  0, 38, 60, 0,0,0,0, 350),
+  KF(  8, 55, 48, 0,0,0,0, 250),
+  KF(  0, 35, 60, 0,0,0,0, 500),
+  KF(  0,  0, 60, 0,0,0,0, 600),
+  KF(  0,  0,  0, 0,0,0,0, 400),
+};
+
+
+const StepN act_scan_look[] = {
+  KF(  0, 35, 60, 0,0,0,0, 400),
+  KF(-35, 40, 62, 0,0,0,0, 700),
+  KF(-15, 32, 58, 0,0,0,0, 600),
+  KF(-45, 38, 60, 0,0,0,0, 700),
+  KF(  0, 30, 58, 0,0,0,0, 500),
+  KF( 35, 40, 62, 0,0,0,0, 700),
+  KF( 15, 32, 58, 0,0,0,0, 600),
+  KF( 45, 38, 60, 0,0,0,0, 700),
+  KF(  0, 30, 60, 0,0,0,0, 500),
+  KF(  0,  0,  0, 0,0,0,0, 800),
+};
+
+
+const StepN act_wave_hi[] = {
+  KF(  0, 45, 60, 0,0,0,0, 500),
+  KF( 30, 45, 60, 0,0,0,0, 350),
+  KF(-20, 45, 60, 0,0,0,0, 350),
+  KF( 30, 45, 60, 0,0,0,0, 350),
+  KF(-20, 45, 60, 0,0,0,0, 350),
+  KF( 30, 45, 60, 0,0,0,0, 350),
+  KF(-20, 45, 60, 0,0,0,0, 350),
+  KF( 10, 35, 60, 0,0,0,0, 500),
+  KF(  0,  0,  0, 0,0,0,0, 800),
+};
+
+
+const StepN act_proud_ok[] = {
+  KF(  0, 50, 60, 0,0,0,0, 500),
+  KF( 15, 55, 58, 0,0,0,0, 220),
+  KF(  5, 48, 60, 0,0,0,0, 380),
+  KF( 18, 55, 58, 0,0,0,0, 220),
+  KF(  0, 45, 60, 0,0,0,0, 450),
+  KF( 10, 52, 60, 0,0,0,0, 400),
+  KF(  0,  0,  0, 0,0,0,0, 900),
+};
+
+
+const StepN act_confused[] = {
+  KF(  0, 30, 60, 0,0,0,0, 400),
+  KF(  0, 20, 50, 0,0,0,0, 500),
+  KF( 18, 28, 58, 0,0,0,0, 450),
+  KF(-18, 28, 58, 0,0,0,0, 450),
+  KF( 12, 30, 60, 0,0,0,0, 450),
+  KF(-12, 30, 60, 0,0,0,0, 450),
+  KF( 25, 40, 55, 0,0,0,0, 500),
+  KF(  0, 30, 60, 0,0,0,0, 500),
+  KF(  0,  0,  0, 0,0,0,0, 800),
+};
+
+// zero：回到你的“归零姿态”（注意：这些是 offset）
+const StepN act_zero[] = {
+  KF(  0,-80,-80, 80, 0,0,0, 600),
+};
+
+const StepN act_demo[] = {
+  KF( 120, 60,150, 0,0,0,0, 800),
+  KF(   0,  0,  0, 0,0,0,0, 600),
+};
 
 
 
@@ -183,6 +358,37 @@ const Step3 act_demo[] = {
 
 
 //*****************播放器************//
+
+
+
+struct MoveRuntimeN {
+  bool running = false;
+  const StepN* seq = nullptr;
+  int n = 0;
+  int idx = 0;
+  uint32_t segStartMs = 0;
+
+  int16_t start[AX_N];   // 当前段起点 offset
+  int16_t delta[AX_N];   // 当前段 delta = target - start
+};
+
+static MoveRuntimeN player;
+static int16_t outOff[AX_N];   // 本帧输出 offset
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 float easeInOut(float t){ return t*t*(3.0f - 2.0f*t); }
 
@@ -198,13 +404,62 @@ struct MoveRuntime3 {
   int rDelta=0, yDelta=0, zDelta=0;
 };
 
-MoveRuntime3 player;
 
+
+
+struct AxisCfg {
+  Servo*     s;
+  AxisState* ax;
+  int16_t    minOff;   // 安全偏移下限
+  int16_t    maxOff;   // 安全偏移上限
+};
 
 int clampOffsetSafe(const AxisState &ax, int o, int minOff, int maxOff){
   int lo = max(-ax.D, minOff);
   int hi = min(180 - ax.D, maxOff);
   return clampi(o, lo, hi);
+}
+
+void applyOffsets(const AxisCfg* cfg, int axisCount, const int16_t* outOff){
+  for(int i=0; i<axisCount; i++){
+    AxisState &a = *cfg[i].ax;
+    a.o = clampOffsetSafe(a, outOff[i], cfg[i].minOff, cfg[i].maxOff);
+    cfg[i].s->write(axisAngle(a));
+  }
+}
+
+
+
+
+AxisCfg axes[AX_N] = {
+  { &R, &Rax, -60, +60 },
+  { &Y, &Yax, -60, +60 },
+  { &Z, &Zax, -60, +60 },
+  { &E, &Eax, -60, +60 },
+  { &A, &Aax, -80, +80 },   // 夹爪/执行器按你机构设
+  { &B, &Bax, -80, +80 },
+  { &C, &Cax, -80, +80 },
+};
+
+
+static void prepareSegment(int idx){
+  // start = 当前轴状态
+  for(int i=0;i<AX_N;i++){
+    player.start[i] = axes[i].ax->o;
+  }
+
+  // target = seq[idx].off，先按硬件极限 clampOffset 限制（不是安全范围）
+  // 说明：clampOffset 只保证 [-D, 180-D]，不负责安全范围
+  for(int i=0;i<AX_N;i++){
+    int t = clampOffset(*axes[i].ax, player.seq[idx].off[i]);
+    player.delta[i] = (int16_t)(t - player.start[i]);
+  }
+}
+
+void writeAllCurrent(){
+  for(int i=0;i<AX_N;i++){
+    axes[i].s->write(axisAngle(*axes[i].ax));
+  }
 }
 
 /**
@@ -237,9 +492,10 @@ int clampOffsetSafe(const AxisState &ax, int o, int minOff, int maxOff){
 bool updateSequence(){
   if(!player.running) return false;
 
-  const Step3 &st = player.seq[player.idx];
+  const StepN &st = player.seq[player.idx];
+
   uint32_t now = millis();
-  uint32_t el = now - player.segStartMs;
+  uint32_t el  = now - player.segStartMs;
 
   uint16_t dur = st.durMs;
   float u = (dur == 0) ? 1.0f : (float)el / (float)dur;
@@ -247,42 +503,27 @@ bool updateSequence(){
 
   float e = easeInOut(u);
 
-  // 插值计算 offset
-  int ro = player.rStart + (int)(player.rDelta * e);
-  int yo = player.yStart + (int)(player.yDelta * e);
-  int zo = player.zStart + (int)(player.zDelta * e);
+  // 1) 插值计算 N 轴 offset
+  for(int i=0;i<AX_N;i++){
+    outOff[i] = (int16_t)(player.start[i] + (int)(player.delta[i] * e));
+  }
 
-  Rax.o = clampOffsetSafe(Rax, ro, -60, +60);
-  Yax.o = clampOffsetSafe(Yax, yo, -60, +60);
-  Zax.o = clampOffsetSafe(Zax, zo, -60, +60);
+  // 2) 安全夹紧 + 写舵机（你已经有 applyOffsets）
+  applyOffsets(axes, AX_N, outOff);
 
-  writeRYZ();
-
-  // 段结束：切下一段
+  // 3) 段结束 -> 切换下一段
   if(u >= 1.0f){
     player.idx++;
     if(player.idx >= player.n){
-      player.running = false;   // ✅ 整套执行完毕
+      player.running = false;
       return false;
     }
-
-    // 下一段准备
     player.segStartMs = now;
-
-    player.rStart = Rax.o; player.yStart = Yax.o; player.zStart = Zax.o;
-
-    int rt = clampOffset(Rax, player.seq[player.idx].rOff);
-    int yt = clampOffset(Yax, player.seq[player.idx].yOff);
-    int zt = clampOffset(Zax, player.seq[player.idx].zOff);
-
-    player.rDelta = rt - player.rStart;
-    player.yDelta = yt - player.yStart;
-    player.zDelta = zt - player.zStart;
+    prepareSegment(player.idx);
   }
 
   return true;
 }
-
 
 /**
  * @brief  启动播放一套动作序列
@@ -304,27 +545,17 @@ bool updateSequence(){
  *   该函数不会做防抖或忙碌判断。
  *   建议通过 playSequence() 统一入口调用。
  */
-void beginSequence(const Step3* seq, int n){
+void beginSequence(const StepN* seq, int n){
   player.running = true;
   player.seq = seq;
   player.n = n;
   player.idx = 0;
   player.segStartMs = millis();
 
-  // 当前段起点 = 当前位置
-  player.rStart = Rax.o; player.yStart = Yax.o; player.zStart = Zax.o;
-
-  // 当前段终点 = 第0段目标
-  int rt = clampOffset(Rax, seq[0].rOff);
-  int yt = clampOffset(Yax, seq[0].yOff);
-  int zt = clampOffset(Zax, seq[0].zOff);
-
-  player.rDelta = rt - player.rStart;
-  player.yDelta = yt - player.yStart;
-  player.zDelta = zt - player.zStart;
-
-  updateSequence();
+  prepareSegment(0);
+  updateSequence(); // 立刻输出第一帧
 }
+
 
 /**
  * @brief  强制停止当前动作播放
@@ -370,7 +601,7 @@ bool isSequenceRunning(){
  * interrupt == false:
  *     若当前正在播放，则忽略本次触发
  */
-static void playSequence(const Step3* seq, int n, bool interrupt=true){
+static void playSequence(const StepN* seq, int n, bool interrupt=true){
   if(interrupt) stopSequence();
   beginSequence(seq, n);
 }
@@ -467,20 +698,55 @@ static bool canTrigger(){
 
 void Servo_PlayZero(){
   if(!canTrigger()) return;
-  playSequence(act_zero, sizeof(act_zero)/sizeof(act_zero[0]));
+  playSequence(act_zero, SEQ_LEN(act_zero));
 }
 
 void Servo_PlayShakeR(){
   if(!canTrigger()) return;
-  playSequence(act_shakeR, sizeof(act_shakeR)/sizeof(act_shakeR[0]));
-}
+  playSequence(act_shakeR, SEQ_LEN(act_shakeR));
+  }
 
 void Servo_PlayWave(){
   if(!canTrigger()) return;
-  playSequence(act_wave, sizeof(act_wave)/sizeof(act_wave[0]));
-}
+  playSequence(act_wave, SEQ_LEN(act_wave));
+  }
 
 void Servo_PlayDemo(){
   if(!canTrigger()) return;
-  playSequence(act_demo, sizeof(act_demo)/sizeof(act_demo[0]));
+  playSequence(act_demo, SEQ_LEN(act_demo));
+  }
+
+void Servo_act_test(){
+  if(!canTrigger()) return;
+  playSequence(act_test, SEQ_LEN(act_test));
+}
+
+void Servo_act_test1(){
+  if(!canTrigger()) return;
+  playSequence(zhizhidiandian, SEQ_LEN(zhizhidiandian));
+}
+
+void Servo_PlayNodAck(){
+  if(!canTrigger()) return;
+  playSequence(act_nod_ack, SEQ_LEN(act_nod_ack));
+}
+
+void Servo_PlayScan(){
+  if(!canTrigger()) return;
+  playSequence(act_scan_look, SEQ_LEN(act_scan_look));
+}
+
+void Servo_PlayWaveHi(){
+  if(!canTrigger()) return;
+  playSequence(act_wave_hi, SEQ_LEN(act_wave_hi));
+}
+
+void Servo_PlayConfused(){
+  if(!canTrigger()) return;
+  playSequence(act_confused, SEQ_LEN(act_confused));
+}
+
+void Servo_PlayProudOK(){
+  if(!canTrigger()) return;
+  playSequence(act_proud_ok, SEQ_LEN(act_proud_ok));
 }
