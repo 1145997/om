@@ -50,7 +50,24 @@ void Servo_PlayScan();
 void Servo_PlayWaveHi();
 void Servo_PlayConfused();
 void Servo_PlayProudOK();
+void Servo_act_firest();
 
+
+/*****演出*******/
+void Servo_act_air_warning();
+void Servo_act_report_crash();
+void Servo_act_gas_wave_need_cores_map();
+void Servo_act_dismantle_god_myth();
+void Servo_act_blow_the_box_fast();
+void Servo_act_emergency_oxygen();
+void Servo_act_ai_party_dizzy();
+void Servo_act_party_glitch_spasm();
+void Servo_act_point_3_knobs_20s();
+void Servo_act_doubt_not_sure_6s();
+void Servo_act_nav_abandoned_port();
+void Servo_act_nervous_apology_6s();
+void Servo_act_accuse_god_15s();
+void Servo_act_overload_need2_override_urgent_15s();
 
 
 

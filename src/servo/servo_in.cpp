@@ -109,6 +109,18 @@ void moveToSmooth_Blocking(Servo &s, AxisState &ax, int targetOffset, int stepDe
   }
 }
 
+//归零姿态
+void Servo_zero(){
+  R.write(axisSetOffset(Rax, -80));
+  Y.write(axisSetOffset(Yax, -80));
+  Z.write(axisSetOffset(Zax, -80));
+  E.write(axisSetOffset(Eax,-20));
+  A.write(axisReset(Aax));
+  B.write(axisReset(Bax));
+  C.write(axisReset(Cax));
+  delay(500);
+  R.write(axisReset(Rax));
+}
 
 
 void Servo_Default(){
@@ -129,19 +141,11 @@ void Servo_Default(){
   axisReset(Cax);
 
   delay(1000);
+  Servo_zero();
+  delay(500);
 }
 
 
-//归零姿态
-void Servo_zero(){
-  R.write(axisSetOffset(Rax, -80));
-  Y.write(axisSetOffset(Yax, -80));
-  Z.write(axisSetOffset(Zax, -80));
-  E.write(axisSetOffset(Eax, +80));
-  A.write(axisReset(Aax));
-  B.write(axisReset(Bax));
-  C.write(axisReset(Cax));
-}
 
 void Servo_init(){
   R.attach(R_Pin);
@@ -350,6 +354,76 @@ const StepN act_demo[] = {
   KF(   0,  0,  0, 0,0,0,0, 600),
 };
 
+const StepN act_firest[] = {
+  KF(  -10, -80, -80, 0,0,0,0, 400),
+  KF(  0, -60, -60, 0,0,0,0, 1000),
+  KF(  0, 30, 30, 0,0,0,0, 2000),
+  KF(  0, 30, 30, 0,0,0,0, 2000),
+  KF(  0, 30, 30, 0,0,0,0, 2000),
+  KF(  -10, -80, -80, 0,0,0,0, 400),
+};
+
+
+
+// **********************************************
+// 动作：空气超标警告（约 5s）
+const StepN act_air_warning[] = {
+
+  // --- ① 扫描阶段 ---
+  KF(   0,  30,  60, 0,0,0,0, 300),  // 抬起准备
+  KF( -35,  35,  60, 0,0,0,0, 600),  // 向左扫描
+  KF(  35,  35,  60, 0,0,0,0, 800),  // 向右扫描
+  KF(   0,  28,  55, 0,0,0,0, 500),  // 回中并稍微下压
+
+  // --- ② 发现异常（停顿）---
+  KF(   0,  20,  50, 0,0,0,0, 600),  // 稍微后仰
+  KF(   0,  25,  55, 0,0,0,0, 400),  // 稳住
+
+  // --- ③ “虽然我是铁做的” ---
+  KF(  15,  50,  65, 0,0,0,0, 600),  // 抬起+有点得意
+  KF(   0,  45,  60, 0,0,0,0, 500),  // 稳一下
+
+  // --- ④ “但你的肺可不是” ---
+  KF(  25,  55,  40, 0,0,0,0, 500),  // 前伸（指人）
+  KF(  10,  55,  45, 0,0,0,0, 400),  // 小点一下
+  KF(   0,   0,   0, 0,0,0,0, 600),  // 收回
+};
+
+// 动作：浮空岛灾情播报（约 15s）
+// 轴顺序：R Y Z E A B C
+const StepN act_report_crash[] = {
+
+  // --- ① 读取委托 / 扫描（0~3s）---
+  KF(   0,  25,  55, 0,0,0,0, 400),  // 进入播报姿态
+  KF( -25,  28,  58, 0,0,0,0, 800),  // 左侧读取
+  KF(  25,  28,  58, 0,0,0,0, 900),  // 右侧读取
+  KF(   0,  26,  56, 0,0,0,0, 900),  // 回中锁定
+
+  // --- ② 动力愈况而下（3~6s）：慢慢“塌”下去 ---
+  KF(   0,  18,  48, 0,0,0,0, 1200), // 下沉（像电量掉）
+  KF(  -8,  16,  45, 0,0,0,0, 800),  // 微摇（不稳）
+  KF(   0,  18,  48, 0,0,0,0, 1000), // 勉强回一点
+
+  // --- ③ 毒气攀升（6~9s）：抬头+紧张扫描 ---
+  KF(   0,  35,  65, 0,0,0,0, 700),  // 抬头（警觉）
+  KF( -35,  38,  62, 0,0,0,0, 700),  // 左扫（“含量攀升”）
+  KF(  35,  38,  62, 0,0,0,0, 700),  // 右扫
+  KF(   0,  34,  64, 0,0,0,0, 900),  // 回中凝重停顿
+
+  // --- ④ 没有应对手段（9~12s）：无奈+烦躁 ---
+  KF(  18,  30,  58, 0,0,0,0, 700),  // 右偏（像“怎么办”）
+  KF( -18,  30,  58, 0,0,0,0, 700),  // 左偏
+  KF(   0,  28,  56, 0,0,0,0, 600),  // 回中（叹气感）
+
+  // --- ⑤ 再这样下去将坠毁（12~14s）：急下沉+失稳 ---
+  KF(  10,  14,  38, 0,0,0,0, 800),  // 明显下坠
+  KF( -10,  12,  35, 0,0,0,0, 600),  // 抖一下（结构要散）
+  KF(   0,  16,  40, 0,0,0,0, 600),  // 稳住（但很危险）
+
+  // --- ⑥ 点名委托人：涡轮总督（14~15s）：指向定格 ---
+  KF(  28,  40,  45, 0,0,0,0, 800),  // 指向 + 定格（点名）
+};
+
 
 
 //***********************************//
@@ -432,10 +506,10 @@ void applyOffsets(const AxisCfg* cfg, int axisCount, const int16_t* outOff){
 
 
 AxisCfg axes[AX_N] = {
-  { &R, &Rax, -60, +60 },
-  { &Y, &Yax, -60, +60 },
-  { &Z, &Zax, -60, +60 },
-  { &E, &Eax, -60, +60 },
+  { &R, &Rax, -85, +85 },
+  { &Y, &Yax, -85, +85 },
+  { &Z, &Zax, -85, +85 },
+  { &E, &Eax, -85, +85 },
   { &A, &Aax, -80, +80 },   // 夹爪/执行器按你机构设
   { &B, &Bax, -80, +80 },
   { &C, &Cax, -80, +80 },
@@ -750,3 +824,35 @@ void Servo_PlayProudOK(){
   if(!canTrigger()) return;
   playSequence(act_proud_ok, SEQ_LEN(act_proud_ok));
 }
+
+void Servo_act_firest(){
+  if(!canTrigger()) return;
+  playSequence(act_report_crash, SEQ_LEN(act_report_crash));
+}
+
+void Servo_act_air_warning(){ 
+  if(!canTrigger()) return;
+  playSequence(act_air_warning, SEQ_LEN(act_air_warning)); 
+}
+
+void Servo_act_report_crash(){ 
+  if(!canTrigger()) return;
+  playSequence(act_report_crash, SEQ_LEN(act_report_crash)); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
