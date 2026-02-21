@@ -67,6 +67,7 @@ void Servo_act_doubt_not_sure_6s();
 void Servo_act_nav_abandoned_port();
 void Servo_act_nervous_apology_6s();
 void Servo_act_accuse_god_15s();
+void Servo_act_point_power_source_2s();
 void Servo_act_overload_need2_override_urgent_15s();
 
 
