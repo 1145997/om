@@ -3,7 +3,7 @@
 
 #include <WS2812FX.h>
 
-#define LED_COUNT 15
+#define LED_COUNT 50
 #define LED_PIN 35
 
 
@@ -15,15 +15,15 @@
  * 你这里从 1 开始没问题，但要确保你物理/逻辑一致
  * ========================= */
 #define Partition_A_Start 0
-#define Partition_A_End   3
-#define Partition_B_Start 4
-#define Partition_B_End   6
-#define Partition_C_Start 7
-#define Partition_C_End   9
-#define Partition_D_Start 10
-#define Partition_D_End   12
-#define Partition_E_Start 13
-#define Partition_E_End   15
+#define Partition_A_End   10
+#define Partition_B_Start 11
+#define Partition_B_End   20
+#define Partition_C_Start 21
+#define Partition_C_End   30
+#define Partition_D_Start 31
+#define Partition_D_End   40
+#define Partition_E_Start 41
+#define Partition_E_End   50
 
 /* =========================
  * 分区 ID（可扩展：新增分区就在这里加）
@@ -91,19 +91,19 @@ typedef struct {
  * ========================= */
 static const ws2812_mode_def_t g_modes[WS2812_MODE_COUNT] = {
   // RED
-  { FX_MODE_BREATH,         0xFF0000, 1500, NO_OPTIONS }, // RED_BREATH
+  { FX_MODE_BREATH,         0xFF0000, 200, NO_OPTIONS }, // RED_BREATH
   { FX_MODE_STATIC,         0xFF0000, 1000, NO_OPTIONS }, // RED_SOLID
   { FX_MODE_RUNNING_LIGHTS, 0xFF0000,  900, NO_OPTIONS }, // RED_FLOW
   { FX_MODE_BLINK,          0xFF0000,  500, NO_OPTIONS }, // RED_BLINK
 
   // YELLOW
-  { FX_MODE_BREATH,         0xFFFF00, 1500, NO_OPTIONS }, // YELLOW_BREATH
+  { FX_MODE_BREATH,         0xFFFF00, 200, NO_OPTIONS }, // YELLOW_BREATH
   { FX_MODE_STATIC,         0xFFFF00, 1000, NO_OPTIONS }, // YELLOW_SOLID
   { FX_MODE_RUNNING_LIGHTS, 0xFFFF00,  900, NO_OPTIONS }, // YELLOW_FLOW
   { FX_MODE_BLINK,          0xFFFF00,  500, NO_OPTIONS }, // YELLOW_BLINK
 
   // GREEN
-  { FX_MODE_BREATH,         0x00FF00, 1500, NO_OPTIONS }, // GREEN_BREATH
+  { FX_MODE_BREATH,         0x00FF00, 200, NO_OPTIONS }, // GREEN_BREATH
   { FX_MODE_STATIC,         0x00FF00, 1000, NO_OPTIONS }, // GREEN_SOLID
   { FX_MODE_RUNNING_LIGHTS, 0x00FF00,  900, NO_OPTIONS }, // GREEN_FLOW
   { FX_MODE_BLINK,          0x00FF00,  500, NO_OPTIONS }, // GREEN_BLINK
@@ -117,5 +117,46 @@ void ws2812_is_running();
 void ws2812_Change();
 //***********业务区**************
 void ws2812_demo1();
+void ws2812_scan_sig();
+void ws2812_scan_sig_worning();
+
+
+void ws2812_err_2();
+
+/* =========================
+ * 全部常亮
+ * ========================= */
+void ws2812_staute_red(void);
+void ws2812_staute_yello(void);
+void ws2812_staute_green(void);
+
+/* =========================
+ * 全部呼吸
+ * ========================= */
+void ws2812_all_breath_red(void);
+void ws2812_all_breath_yellow(void);
+void ws2812_all_breath_green(void);
+
+/* =========================
+ * 全部闪烁
+ * ========================= */
+void ws2812_all_blink_red(void);
+void ws2812_all_blink_yellow(void);
+void ws2812_all_blink_green(void);
+
+/* =========================
+ * 全部流水
+ * ========================= */
+void ws2812_all_flow_red(void);
+void ws2812_all_flow_yellow(void);
+void ws2812_all_flow_green(void);
+
+
+
+
+
+
+
+
 
 #endif
