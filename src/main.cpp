@@ -12,6 +12,7 @@
 #define RX 39
 
 #define Leaser_pin 14
+#define Radar_pin 13
 
 ASR_MOUDLE asr;
 uint8_t result = 0;
@@ -57,102 +58,95 @@ void loop() {
 
       else if(result == 0x05) { 
         Servo_act_air_warning(); 
-        // 台词：警告，空气中化合物超标。
+        biz_start_air_warning(); // 对应空气预警
         Serial.println("5");
       }
 
       else if(result == 0x06) { 
         Servo_act_report_crash(); 
-        // 台词：委托显示浮空岛动力愈况而下……整座岛屿将坠毁。委托人：涡轮总督。
-        Serial.println("4");
+        biz_start_crash_report(); // 对应坠毁报告
+        Serial.println("6");
       }
 
       else if(result == 0x07) { 
         Servo_act_gas_wave_need_cores_map(); 
-        biz_scan_sig(Leaser_pin);
-        biz_start_scan();
-        // 台词：正在分析，检测到未知气体波形，需要三枚核心构件进一步解析成分。
-        Serial.println("4");
+        biz_start_gas_wave_scan(Leaser_pin); // 对应气体波形扫描（已包含引脚操作）
+        Serial.println("7");
       }
 
       else if(result == 0x08) { 
         Servo_act_dismantle_god_myth(); 
-        // 台词：我认为，如果他们的神明真的存在……所谓神谕不过是维护不当产生的摩擦声。
-        Serial.println("4");
+        biz_start_dismantle_myth(); // 对应拆解谜团
+        Serial.println("8");
       }
 
       else if(result == 0x09) { 
         Servo_act_blow_the_box_fast(); 
-
-        // 台词：我的算法分析显示，与其费劲解密，不如直接把箱子炸了。
-        Serial.println("4");
+        biz_start_blow_box(); // 对应直接炸箱子
+        Serial.println("9");
       }
 
       else if(result == 0x0B) { 
         Servo_act_emergency_oxygen(); 
-        // 台词：警告，未知气体浓度加剧，已启用应急制氧。
-        Serial.println("4");
+        biz_start_emergency_oxygen(); // 对应应急制氧
+        Serial.println("11");
       }
 
       else if(result == 0x0C) { 
         Servo_act_ai_party_dizzy(); 
-        // 台词：他的意思是……机箱的主理人在商业街开了一场超棒的AI派对！（晕晕的）
-        Serial.println("4");
+        biz_start_ai_party_dizzy(); // 对应派对/眩晕
+        Serial.println("12");
       }
 
       else if(result == 0x0D) { 
-        biz_err_2_start();
-        biz_err_2();
-        biz_err_2_end();
         Servo_act_party_glitch_spasm(); 
-        // 台词：超棒的派对哦吼吼吼吼吼锟斤拷！（抽风乱甩）
-        Serial.println("4");
+        biz_start_glitch_spasm(); // 对应抽风乱甩（内部包含彩虹灯效）
+        Serial.println("13");
       }
 
       else if(result == 0x0E) { 
         Servo_act_point_3_knobs_20s(); 
-        // 台词：正在分析+分析完毕，请按指示操作三个旋钮。
-        biz_pulse_led(Leaser_pin); // 激光提示
-        Serial.println("4");
+        biz_start_point_knobs(); // 对应旋钮分析提示
+        biz_pulse_led(Leaser_pin); 
+        Serial.println("14");
       }
 
       else if(result == 0x0F) { 
         Servo_act_doubt_not_sure_6s(); 
-        // 台词：我看未必。
-        Serial.println("4");
+        biz_start_doubt(); // 对应怀疑状态
+        Serial.println("15");
       }
 
       else if(result == 0x10) { 
         Servo_act_nav_abandoned_port(); 
-        // 台词：收到。导航到废弃港口。
-        Serial.println("4");
+        biz_start_nav_port(); // 对应导航废弃港口
+        Serial.println("16");
       }
 
       else if(result == 0x11) { 
-        Servo_act_nervous_apology_6s(); 
-        // 台词：额……我说我不是故意的，你信吗？
-        Serial.println("4");
+        Servo_act_nervous_apology_6s();
+        biz_start_nervous_apology(Radar_pin); // 对应紧张道歉
+        Serial.println("17");
       }
 
       else if(result == 0x12) { 
         Servo_act_accuse_god_15s(); 
-        // 台词：万机之神……你所谓的进化，就是让全岛的人呼吸你的尾气吗？
-        Serial.println("4");
+        biz_start_accusation(); // 对应指责情绪
+        Serial.println("18");
       }
 
       else if(result == 0x13) { 
         Servo_act_point_power_source_2s(); 
-        // 台词：那个装置正在源源不断地给他供能。
-        Serial.println("4");
+        biz_start_point_power(); // 对应电力装置指向
+        Serial.println("19");
       }
 
       else if(result == 0x14) { 
         Servo_act_overload_need2_override_urgent_15s(); 
-        // 台词：检测到装置超载运行……我需要剩余两个核心部件，手动覆写。
-        Serial.println("4");
+        biz_start_overload_override(); // 对应装置超载覆写
+        Serial.println("20");
       }
-    }
+  }
 }
-
 
 

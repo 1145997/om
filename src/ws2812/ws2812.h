@@ -75,6 +75,7 @@ typedef enum {
   WS2812_MODE_GREEN_FLOW,
   WS2812_MODE_GREEN_BLINK,
 
+  WS2812_MODE_OFF,
   WS2812_MODE_COUNT,
   WS2812_MODE_INVALID = 0xFF
 } ws2812_mode_t;
@@ -107,6 +108,8 @@ static const ws2812_mode_def_t g_modes[WS2812_MODE_COUNT] = {
   { FX_MODE_STATIC,         0x00FF00, 1000, NO_OPTIONS }, // GREEN_SOLID
   { FX_MODE_RUNNING_LIGHTS, 0x00FF00,  900, NO_OPTIONS }, // GREEN_FLOW
   { FX_MODE_BLINK,          0x00FF00,  500, NO_OPTIONS }, // GREEN_BLINK
+
+  { FX_MODE_STATIC, 0x000000, 1000, NO_OPTIONS }, // OFF
 };
 
 
@@ -122,6 +125,7 @@ void ws2812_scan_sig_worning();
 
 
 void ws2812_err_2();
+
 
 /* =========================
  * 全部常亮
@@ -152,6 +156,14 @@ void ws2812_all_flow_yellow(void);
 void ws2812_all_flow_green(void);
 
 
+
+void fx_detecting() ;
+void fx_detect_done() ;
+void fx_emergency() ;
+void fx_glitch_overload() ;
+void fx_battle();
+void fx_override_running();
+void fx_override_done();
 
 
 
