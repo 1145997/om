@@ -339,8 +339,9 @@ static const SysStep JOB_0x09_BLOW_BOX_STEPS[] = {
   { ws2812_staute_green,    6500  }, // 回常态
 };
 static const SysJob JOB_0x09_BLOW_BOX = { JOB_0x09_BLOW_BOX_STEPS, JOB_COUNT(JOB_0x09_BLOW_BOX_STEPS) };
-void biz_start_blow_box()
+void biz_start_blow_box(uint8_t pin)
 {
+  io_Continuous_flipping(pin, 5.0f, 100 ,2000);
   sys_job_start(JOB_0x09_BLOW_BOX);
 }
 
@@ -418,8 +419,9 @@ static const SysStep JOB_0x0E_POINT_KNOBS_STEPS[] = {
 };
 static const SysJob JOB_0x0E_POINT_KNOBS = { JOB_0x0E_POINT_KNOBS_STEPS, JOB_COUNT(JOB_0x0E_POINT_KNOBS_STEPS) };
 
-void biz_start_point_knobs()
+void biz_start_point_knobs(uint8_t pin)
 {
+  biz_pulse_led(pin); 
   sys_job_start(JOB_0x0E_POINT_KNOBS);
 }
 //================================================================================

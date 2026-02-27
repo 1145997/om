@@ -1,5 +1,4 @@
-#ifndef servo_in_h__
-#define servo_in_h__
+#pragma once
 
 #include <Arduino.h>
 #include <Servo.h>
@@ -18,7 +17,7 @@
 #define Z_Angle_Default 90
 #define E_Angle_Default 90
 #define A_Angle_Default 90
-#define B_Angle_Default 90
+#define B_Angle_Default 160
 #define C_Angle_Default 90
 
 
@@ -71,5 +70,3 @@ void Servo_act_point_power_source_2s();
 void Servo_act_overload_need2_override_urgent_15s();
 
 
-
-#endif

@@ -28,6 +28,7 @@ void setup() {
   // 初始化语音 UART
   asr.ASR_init();
   Serial.println("UART In ready");
+  Serial.println(" power by zdc");
 }
 
 void loop() {
@@ -82,7 +83,7 @@ void loop() {
 
       else if(result == 0x09) { 
         Servo_act_blow_the_box_fast(); 
-        biz_start_blow_box(); // 对应直接炸箱子
+        biz_start_blow_box(Leaser_pin); // 对应直接炸箱子
         Serial.println("9");
       }
 
@@ -106,8 +107,7 @@ void loop() {
 
       else if(result == 0x0E) { 
         Servo_act_point_3_knobs_20s(); 
-        biz_start_point_knobs(); // 对应旋钮分析提示
-        biz_pulse_led(Leaser_pin); 
+        biz_start_point_knobs(Leaser_pin); // 对应旋钮分析提示
         Serial.println("14");
       }
 
