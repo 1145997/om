@@ -5,14 +5,12 @@
 #include "ws2812/ws2812.h"
 #include "ASR/ASR_module.h"
 #include "sys/sys.h"
-
+#include "config/config.h"
 
 #define bootraid  115200
 #define TX 38
 #define RX 39
 
-#define Leaser_pin 14
-#define Radar_pin 13
 
 ASR_MOUDLE asr;
 uint8_t result = 0;
@@ -20,6 +18,7 @@ uint8_t result = 0;
 
 void setup() {
   Serial.begin(115200);                     // 调试串口
+  config_init();
   Servo_init();
   ws2812_init();
   ws2812_staute_green();
@@ -29,6 +28,7 @@ void setup() {
   asr.ASR_init();
   Serial.println("UART In ready");
   Serial.println(" power by zdc");
+  
 }
 
 void loop() {
@@ -40,7 +40,7 @@ void loop() {
     if(result != 0){
       if(result == 0x01) {
         Servo_act_firest();
-        biz_pulse_led(Leaser_pin);
+        biz_pulse_led(Leaser_pin_1,Leaser_pin_2,Leaser_pin_3);
         ws2812_demo1();
         Serial.println("1");
       }
@@ -71,7 +71,7 @@ void loop() {
 
       else if(result == 0x07) { 
         Servo_act_gas_wave_need_cores_map(); 
-        biz_start_gas_wave_scan(Leaser_pin); // 对应气体波形扫描（已包含引脚操作）
+        biz_start_gas_wave_scan(Leaser_pin_1,Leaser_pin_2,Leaser_pin_3); // 对应气体波形扫描（已包含引脚操作）
         Serial.println("7");
       }
 
@@ -83,7 +83,7 @@ void loop() {
 
       else if(result == 0x09) { 
         Servo_act_blow_the_box_fast(); 
-        biz_start_blow_box(Leaser_pin); // 对应直接炸箱子
+        biz_start_blow_box(Leaser_pin_1,Leaser_pin_2,Leaser_pin_3); // 对应直接炸箱子
         Serial.println("9");
       }
 
@@ -107,7 +107,7 @@ void loop() {
 
       else if(result == 0x0E) { 
         Servo_act_point_3_knobs_20s(); 
-        biz_start_point_knobs(Leaser_pin); // 对应旋钮分析提示
+        biz_start_point_knobs(Leaser_pin_1,Leaser_pin_2,Leaser_pin_3); // 对应旋钮分析提示
         Serial.println("14");
       }
 

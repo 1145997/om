@@ -8,6 +8,59 @@
 
 namespace {
 
+
+
+
+static constexpr uint8_t MAX_IO_LEVEL_TASKS = 16;
+
+struct IoLevelTask {
+  bool used = false;
+  bool active = false;
+  uint8_t pin = 0;
+  uint8_t level = HIGH;        // HIGH / LOW
+  uint32_t trigger_time = 0;
+};
+
+static IoLevelTask g_io_level_tasks[MAX_IO_LEVEL_TASKS];
+
+static bool io_set_level_at(uint8_t pin, uint8_t level, uint32_t delay_ms)
+{
+  uint32_t now = millis();
+  for (int i = 0; i < MAX_IO_LEVEL_TASKS; i++) {
+    if (!g_io_level_tasks[i].used || !g_io_level_tasks[i].active) {
+      auto &t = g_io_level_tasks[i];
+      t.used = true;
+      t.active = true;
+      t.pin = pin;
+      t.level = level;
+      t.trigger_time = now + delay_ms;
+      return true;
+    }
+  }
+  return false;
+}
+
+
+
+
+static void sys_iolevel_service(uint32_t now)
+{
+  for (int i = 0; i < MAX_IO_LEVEL_TASKS; i++) {
+    auto &t = g_io_level_tasks[i];
+    if (!t.used || !t.active) continue;
+
+    if ((int32_t)(now - t.trigger_time) >= 0) {
+      t.active = false;
+      digitalWrite(t.pin, t.level);
+    }
+  }
+}
+
+
+
+
+
+
 static constexpr uint8_t MAX_RUNNING_JOBS = 6;
 
 struct JobRuntime {
@@ -202,6 +255,37 @@ static void sys_job_service(uint32_t now) {
     }
   }
  }     // 你第三段
+
+// 0 表示不启用该路
+static inline bool laser_valid(uint8_t pin) { return pin != 0; }
+
+static inline void laser_init_pin(uint8_t pin) {
+  if(!laser_valid(pin)) return;
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW); // 默认关（HIGH=开）
+}
+
+// 立即开/关
+static inline void laser_on(uint8_t pin)  { if(laser_valid(pin)) digitalWrite(pin, HIGH); }
+static inline void laser_off(uint8_t pin) { if(laser_valid(pin)) digitalWrite(pin, LOW); }
+
+// t1~t2 保持开（HIGH），非阻塞
+static inline void laser_on_between(uint8_t pin, uint32_t t1_ms, uint32_t t2_ms) {
+  if(!laser_valid(pin)) return;
+  if ((int32_t)(t2_ms - t1_ms) < 0) return;
+
+  // 如果你有 ioflip 对同 pin 控制，强烈建议先 cancel（如果你已实现 io_flip_cancel）
+  // io_flip_cancel(pin);
+
+  io_set_level_at(pin, HIGH, t1_ms);
+  io_set_level_at(pin, LOW,  t2_ms);
+}
+
+// 脉冲：从 start 开始，持续 on_ms，然后关
+static inline void laser_pulse(uint8_t pin, uint32_t start_ms, uint32_t on_ms) {
+  laser_on_between(pin, start_ms, start_ms + on_ms);
+}
+
 } // namespace
 
 
@@ -221,6 +305,7 @@ void sys_init() {
 void sys_service() {
   uint32_t now = millis();
   sys_delay_service(now);
+  sys_iolevel_service(now); 
   sys_ioflip_service(now);
   sys_job_service(now);
 }
@@ -228,13 +313,17 @@ void sys_service() {
 // 示例业务函数：只“投递任务”
 // ========================
 
-void biz_pulse_led(uint8_t pin) {
-  pinMode(pin, OUTPUT);
-  // 以 5Hz 翻转 10 次（约 1 秒：5Hz 的方波周期 200ms，半周期 100ms，10 次翻转=1s）
-  // 你可以按你的“次数/速度”概念改参数
-  io_Continuous_flipping(pin, 1.0f, 10,2000);
-}
+void biz_pulse_led(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
+{
+  laser_init_pin(Leaser_pin_1);
+  laser_init_pin(Leaser_pin_2);
+  laser_init_pin(Leaser_pin_3);
 
+  // 三路同时短脉冲提示（可按需改）
+  laser_pulse(Leaser_pin_1, 0, 200);
+  laser_pulse(Leaser_pin_2, 0, 200);
+  laser_pulse(Leaser_pin_3, 0, 150);
+}
 
 
 //================================================================================
@@ -284,9 +373,27 @@ void biz_start_crash_report()
 //================================================================================
 //================================================================================
 
-void biz_scan_sig(uint8_t pin){
-    pinMode(pin, OUTPUT);
-    io_Continuous_flipping(pin, 5.0f, 100 ,2000);
+static void laeser_gas_wave_scan_scan(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
+{
+  laser_init_pin(Leaser_pin_1);
+  laser_init_pin(Leaser_pin_2);
+  laser_init_pin(Leaser_pin_3);
+
+  // 扫描：交错闪烁（0~1.2s）
+  laser_pulse(Leaser_pin_1, 0,   120);
+  laser_pulse(Leaser_pin_2, 150, 120);
+  laser_pulse(Leaser_pin_3, 300, 80);
+
+  laser_pulse(Leaser_pin_1, 450, 120);
+  laser_pulse(Leaser_pin_2, 600, 120);
+  laser_pulse(Leaser_pin_3, 750, 80);
+
+  laser_pulse(Leaser_pin_1, 900, 120);
+  laser_pulse(Leaser_pin_2, 1050,120);
+
+  io_Continuous_flipping(Leaser_pin_2,3.0f,40,100);
+  io_Continuous_flipping(Leaser_pin_1,1.0f,10,200);
+
 }
 
 
@@ -299,12 +406,11 @@ static const SysStep JOB_0x07_GAS_WAVE_SCAN_STEPS[] = {
   { ws2812_staute_green,      11000 },
 };
 static const SysJob JOB_0x07_GAS_WAVE_SCAN = { JOB_0x07_GAS_WAVE_SCAN_STEPS, JOB_COUNT(JOB_0x07_GAS_WAVE_SCAN_STEPS) };
-void biz_start_gas_wave_scan(uint8_t pin)
+void biz_start_gas_wave_scan(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
 {
-  biz_scan_sig(pin);
+  laeser_gas_wave_scan_scan(Leaser_pin_1, Leaser_pin_2, Leaser_pin_3);
   sys_job_start(JOB_0x07_GAS_WAVE_SCAN);
 }
-
 //================================================================================
 //================================================================================
 //================================================================================
@@ -329,7 +435,20 @@ void biz_start_dismantle_myth()
 //================================================================================
 //================================================================================
 
+static void laeser_blow_box_aim(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
+{
+  laser_init_pin(Leaser_pin_1);
+  laser_init_pin(Leaser_pin_2);
+  laser_init_pin(Leaser_pin_3);
 
+  // 点状激光（pin3）持续锁定 0.5s~3.5s
+  laser_on_between(Leaser_pin_3, 500, 3500);
+
+  // 十字激光做“校准闪两下”
+  io_Continuous_flipping(Leaser_pin_2,10.0f,100,100);
+  io_Continuous_flipping(Leaser_pin_1,10.0f,100,200);
+  
+}
 
 static const SysStep JOB_0x09_BLOW_BOX_STEPS[] = {
   { ws2812_all_breath_red,  0     }, // 蓄力
@@ -339,9 +458,9 @@ static const SysStep JOB_0x09_BLOW_BOX_STEPS[] = {
   { ws2812_staute_green,    6500  }, // 回常态
 };
 static const SysJob JOB_0x09_BLOW_BOX = { JOB_0x09_BLOW_BOX_STEPS, JOB_COUNT(JOB_0x09_BLOW_BOX_STEPS) };
-void biz_start_blow_box(uint8_t pin)
+void biz_start_blow_box(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
 {
-  io_Continuous_flipping(pin, 5.0f, 100 ,2000);
+  laeser_blow_box_aim(Leaser_pin_1, Leaser_pin_2, Leaser_pin_3);
   sys_job_start(JOB_0x09_BLOW_BOX);
 }
 
@@ -411,6 +530,28 @@ void biz_start_glitch_spasm()
 //================================================================================
 //================================================================================
 
+static void laeser_point_knobs_scan(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
+{
+  laser_init_pin(Leaser_pin_1);
+  laser_init_pin(Leaser_pin_2);
+  laser_init_pin(Leaser_pin_3);
+
+  // 三旋钮：依次点亮提示（循环两轮，约 2.4s）
+  laser_pulse(Leaser_pin_1, 0,   250);
+  laser_pulse(Leaser_pin_2, 400, 250);
+  laser_pulse(Leaser_pin_3, 800, 200);
+
+  laser_pulse(Leaser_pin_1, 1200,250);
+  laser_pulse(Leaser_pin_2, 1600,250);
+  laser_pulse(Leaser_pin_3, 2000,200);
+
+  io_set_level_at(Leaser_pin_2, HIGH,  300);
+  // t2 到：拉高（t2 = t1 + hold_ms）
+  io_set_level_at(Leaser_pin_2, LOW, 300 + 15000);
+
+  io_Continuous_flipping(Leaser_pin_1,10.0f,100,200);
+  io_Continuous_flipping(Leaser_pin_3,10.0f,100,300);
+}
 
 static const SysStep JOB_0x0E_POINT_KNOBS_STEPS[] = {
   { fx_detecting,    0    },
@@ -419,9 +560,10 @@ static const SysStep JOB_0x0E_POINT_KNOBS_STEPS[] = {
 };
 static const SysJob JOB_0x0E_POINT_KNOBS = { JOB_0x0E_POINT_KNOBS_STEPS, JOB_COUNT(JOB_0x0E_POINT_KNOBS_STEPS) };
 
-void biz_start_point_knobs(uint8_t pin)
+// void biz_start_point_knobs(uint8_t Leaser_pin_1 ,uint8_t Leaser_pin_2 ,uint8_t Leaser_pin_3)
+void biz_start_point_knobs(uint8_t Leaser_pin_1, uint8_t Leaser_pin_2, uint8_t Leaser_pin_3)
 {
-  biz_pulse_led(pin); 
+  laeser_point_knobs_scan(Leaser_pin_1, Leaser_pin_2, Leaser_pin_3);
   sys_job_start(JOB_0x0E_POINT_KNOBS);
 }
 //================================================================================
@@ -466,7 +608,9 @@ void biz_start_nav_port()
 
 void biz_err_3(uint8_t pin) {
   pinMode(pin, OUTPUT);
-  io_Continuous_flipping(pin, 1.0f, 1,2000);
+  io_set_level_at(pin, LOW,  300);
+  // t2 到：拉高（t2 = t1 + hold_ms）
+  io_set_level_at(pin, HIGH, 300 + 15000);
 }
 
 static const SysStep JOB_0x11_NERVOUS_APOLOGY_STEPS[] = {
