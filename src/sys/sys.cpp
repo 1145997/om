@@ -610,7 +610,7 @@ void biz_err_3(uint8_t pin) {
   pinMode(pin, OUTPUT);
   io_set_level_at(pin, LOW,  300);
   // t2 到：拉高（t2 = t1 + hold_ms）
-  io_set_level_at(pin, HIGH, 300 + 15000);
+  io_set_level_at(pin, HIGH, 300 + 8000);
 }
 
 static const SysStep JOB_0x11_NERVOUS_APOLOGY_STEPS[] = {
